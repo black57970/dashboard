@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>股權分散 Dashboard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #F4F5F7; color: #1A1A2E; }
+.topbar { background: #1C3553; color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.topbar-title { font-size: 20px; font-weight: 600; }
+.topbar-meta { font-size: 14px; color: #8CA0B0; margin-top: 2px; }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.badge { font-size: 13px; padding: 4px 12px; border-radius: 20px; background: rgba(255,255,255,0.12); color: #C8D8E8; }
+.rbtn { font-size: 14px; padding: 6px 16px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.25); background: transparent; color: #fff; cursor: pointer; }
+.rbtn:hover { background: rgba(255,255,255,0.1); }
+.wrap { max-width: 1400px; margin: 0 auto; padding: 20px 16px; }
+.week-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.wtab { padding: 6px 16px; font-size: 13px; font-weight: 500; border-radius: 6px; border: 1px solid #D0D8E0; background: #fff; color: #667788; cursor: pointer; }
+.wtab.active { background: #1C3553; color: #fff; border-color: #1C3553; }
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+.stat-label { font-size: 12px; color: #9EAAB8; margin-bottom: 6px; }
+.stat-val { font-size: 24px; font-weight: 700; color: #1C3553; }
+.main-card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 20px; }
+.card-hdr { padding: 12px 16px; background: #1C3553; color: #fff; display: flex; align-items: center; justify-content: space-between; }
+.card-hdr-title { font-size: 15px; font-weight: 600; }
+.card-hdr-sub { font-size: 12px; opacity: 0.7; }
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th { padding: 9px 14px; font-size: 12px; font-weight: 600; color: #fff; text-align: left; background: #2C4E6E; white-space: nowrap; }
+.tbl th.r { text-align: right; }
+.tbl td { padding: 8px 14px; font-size: 13px; border-bottom: 1px solid #F2F4F7; color: #2C3E50; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: #F0F5FF; cursor: pointer; }
+.tbl td.r { text-align: right; }
+.tbl td.cd { font-family: monospace; font-weight: 600; color: #556677; }
+.tbl td.nm { font-weight: 500; }
+.tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+.tag-new  { background: #FEF9C3; color: #854D0E; }
+.tag-cont { background: #DCFCE7; color: #166534; }
+.up   { color: #C0392B; font-weight: 600; }
+.down { color: #1A6B3C; font-weight: 600; }
+.stitle { font-size: 16px; font-weight: 600; color: #1C3553; margin: 24px 0 10px; display: flex; align-items: center; gap: 8px; }
+.stitle::before { content:''; width:4px; height:18px; background:#1C3553; border-radius:2px; }
+.hist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 12px; }
+.hist-card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+.hist-hdr { padding: 10px 14px; background: #2C4E6E; color: #fff; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.hist-hdr:hover { background: #1C3553; }
+.hist-hdr-name { font-size: 14px; font-weight: 600; }
+.hist-hdr-code { font-size: 12px; opacity: 0.7; font-family: monospace; }
+.hist-row { display: flex; align-items: center; gap: 8px; padding: 7px 14px; border-bottom: 1px solid #F2F4F7; font-size: 12px; }
+.hist-row:last-child { border-bottom: none; }
+.hist-date { color: #9EAAB8; width: 75px; flex-shrink: 0; }
+.hist-bar-wrap { flex: 1; background: #F2F4F7; border-radius: 3px; height: 6px; overflow: hidden; }
+.hist-bar { height: 100%; border-radius: 3px; background: #1C3553; }
+.hist-pct { width: 50px; text-align: right; font-weight: 600; color: #1C3553; flex-shrink: 0; }
+.loading { padding: 3rem; text-align: center; color: #9EAAB8; font-size: 15px; }
+.sp { display: inline-block; width: 20px; height: 20px; border: 2px solid #E0E5EB; border-top-color: #667788; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 8px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty { padding: 3rem; text-align: center; font-size: 14px; color: #9EAAB8; }
+.hint { font-size: 11px; color: #9EAAB8; text-align: right; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div>
+    <div class="topbar-title">集保戶股權分散 Dashboard</div>
+    <div class="topbar-meta">人數減少 且 大戶比例增加｜點擊股票→玩股網</div>
+  </div>
+  <div class="topbar-right">
+    <span class="badge" id="dbadge">—</span>
+    <button class="rbtn" onclick="loadAll()">↻ 重新整理</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+  <div id="week-tabs-area" class="week-tabs" style="margin-bottom:0;"></div>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <span style="font-size:12px;color:#9EAAB8;">排序：</span>
+    <button class="wtab active" id="sort-hdiff" onclick="setSort('hdiff',this)">人數減少</button>
+    <button class="wtab" id="sort-wdiff" onclick="setSort('wdiff',this)">大戶變動%</button>
+  </div>
+</div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">本週篩選日期</div><div class="stat-val" id="s-date">—</div></div>
+    <div class="stat-card"><div class="stat-label">符合條件檔數</div><div class="stat-val" id="s-count">—</div></div>
+    <div class="stat-card"><div class="stat-label">新進榜</div><div class="stat-val" id="s-new" style="color:#854D0E;">—</div></div>
+    <div class="stat-card"><div class="stat-label">連續集中</div><div class="stat-val" id="s-cont" style="color:#166534;">—</div></div>
+  </div>
+  <div class="hint">點擊股票列 → 開啟玩股網查詢</div>
+  <div class="main-card">
+    <div class="card-hdr">
+      <span class="card-hdr-title">本週大戶集中排行</span>
+      <span class="card-hdr-sub">人數減少 且 大戶（1000張以上）比例增加</span>
+    </div>
+    <div id="main-area"><div class="loading"><span class="sp"></span>載入資料中...</div></div>
+  </div>
+  <div class="stitle">歷史追蹤（連續上榜股票）</div>
+  <div id="hist-area"><div class="loading"><span class="sp"></span>分析歷史資料...</div></div>
+</div>
+
+<script>
+const SID = '1tqGiLRbhFTojjLKi5rUeRu6UwnvBT2zHDDk490A4Tjc';
+let WEEKS = [], CW = 0, HIST = null, SORT = 'hdiff';
+
+function wantgoo(code) { return `https://www.wantgoo.com/stock/${code}`; }
+
+async function gviz(sheet, query) {
+  let url = `https://docs.google.com/spreadsheets/d/${SID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheet)}`;
+  if (query) url += `&tq=${encodeURIComponent(query)}`;
+  const res = await fetch(url);
+  const txt = await res.text();
+  const m = txt.match(/setResponse\(([\s\S]*)\)/);
+  if (!m) throw new Error('解析失敗');
+  return JSON.parse(m[1]).table;
+}
+
+function gf(cell) { return cell ? (cell.f != null ? cell.f : (cell.v != null ? cell.v : '')) : ''; }
+
+async function loadAll() {
+  WEEKS = []; CW = 0; HIST = null;
+  document.getElementById('main-area').innerHTML = '<div class="loading"><span class="sp"></span>載入中...</div>';
+  document.getElementById('hist-area').innerHTML = '<div class="loading"><span class="sp"></span>分析中...</div>';
+  document.getElementById('week-tabs-area').innerHTML = '';
+
+  // Step1: 從歷史追蹤讀取所有週別日期
+  try {
+    const histTable = await gviz('📈 歷史追蹤', 'select A where A is not null');
+    const dates = new Set();
+    for (const row of histTable.rows || []) {
+      const d = String(gf(row.c[0])||'').trim();
+      if (d && d !== '週別日期' && /\d{4}\/\d{2}\/\d{2}/.test(d)) dates.add(d);
+    }
+    const sortedDates = [...dates].sort().reverse(); // 最新的在前
+
+    // Step2: 用這些日期去讀對應的週報工作表
+    const weekResults = await Promise.allSettled(
+      sortedDates.map(d => gviz(`週報_${d}`))
+    );
+
+    sortedDates.forEach((d, i) => {
+      if (weekResults[i].status === 'fulfilled') {
+        WEEKS.push({ label: d, sheet: `週報_${d}`, table: weekResults[i].value });
+      }
+    });
+
+    // Step3: 讀歷史追蹤完整資料
+    HIST = await gviz('📈 歷史追蹤');
+  } catch(e) {
+    console.error(e);
+  }
+
+  // 如果歷史追蹤沒有資料，直接嘗試讀今天附近的週報
+  if (WEEKS.length === 0) {
+    const now = new Date();
+    const tryDates = [];
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i * 7);
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      tryDates.push(`${y}/${m}/${dd}`);
+    }
+    const results = await Promise.allSettled(tryDates.map(d => gviz(`週報_${d}`)));
+    tryDates.forEach((d, i) => {
+      if (results[i].status === 'fulfilled' && (results[i].value.rows||[]).length > 2) {
+        WEEKS.push({ label: d, sheet: `週報_${d}`, table: results[i].value });
+      }
+    });
+  }
+
+  document.getElementById('dbadge').textContent = new Date().toLocaleDateString('zh-TW');
+
+  if (WEEKS.length === 0) {
+    document.getElementById('main-area').innerHTML = '<div class="empty">找不到週報資料，請先執行 tdcc_tracker.py</div>';
+    document.getElementById('hist-area').innerHTML = '';
+    return;
+  }
+
+  renderTabs();
+  renderWeek();
+  renderHistory();
+}
+
+function renderTabs() {
+  document.getElementById('week-tabs-area').innerHTML = WEEKS.map((w,i) =>
+    `<button class="wtab ${i===CW?'active':''}" onclick="switchWeek(${i},this)">${w.label}</button>`
+  ).join('');
+}
+
+function switchWeek(i, el) {
+  CW = i;
+  document.querySelectorAll('.wtab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderWeek();
+}
+
+function parseWeekRows(table) {
+  const rows = [];
+  for (const row of table.rows || []) {
+    const cells = row.c;
+    if (!cells || cells.length < 6) continue;
+    const f0 = String(gf(cells[0])||'').trim();
+    // 跳過標題和空列
+    if (!f0 || f0.includes('篩選') || f0.includes('日期')) continue;
+
+    const code   = String(gf(cells[1])||'').replace(/^'/,'').trim();
+    const name   = String(gf(cells[2])||'').trim();
+    if (!code || !name || name==='名稱') continue;
+
+    rows.push({
+      date:   f0,
+      code,
+      name,
+      hDiff:  String(gf(cells[3])||'').trim(),
+      wDiff:  String(gf(cells[4])||'').trim(),
+      wPct:   String(gf(cells[5])||'').trim(),
+      price:  String(gf(cells[6])||'').trim(),
+      status: String(gf(cells[7])||'').trim(),
+      perf:   cells[8] ? String(gf(cells[8])||'').trim() : '—',
+    });
+  }
+  return rows;
+}
+
+function renderWeek() {
+  if (!WEEKS[CW]) return;
+  const rows = parseWeekRows(WEEKS[CW].table);
+  const newCnt  = rows.filter(r=>r.status.includes('新進')).length;
+  const contCnt = rows.filter(r=>r.status.includes('集中')||r.status.includes('連續')).length;
+
+  document.getElementById('s-date').textContent  = WEEKS[CW].label;
+  document.getElementById('s-count').textContent = rows.length;
+  document.getElementById('s-new').textContent   = newCnt;
+  document.getElementById('s-cont').textContent  = contCnt;
+
+  // 排序
+  if (SORT === 'wdiff') {
+    rows.sort((a,b)=>{
+      const av = Math.abs(parseFloat(a.wDiff)||0) < 1 ? (parseFloat(a.wDiff)||0)*100 : (parseFloat(a.wDiff)||0);
+      const bv = Math.abs(parseFloat(b.wDiff)||0) < 1 ? (parseFloat(b.wDiff)||0)*100 : (parseFloat(b.wDiff)||0);
+      return bv - av;
+    });
+  } else {
+    rows.sort((a,b)=>{
+      const av = parseInt(a.hDiff.replace(/,/g,'').replace('+',''))||0;
+      const bv = parseInt(b.hDiff.replace(/,/g,'').replace('+',''))||0;
+      return av - bv;
+    });
+  }
+
+  if (!rows.length) {
+
+    document.getElementById('main-area').innerHTML = '<div class="empty">本週無資料</div>';
+    return;
+  }
+
+  document.getElementById('main-area').innerHTML = `
+    <table class="tbl">
+      <thead><tr>
+        <th>#</th><th>代號</th><th>名稱</th>
+        <th class="r">人數變動</th><th class="r">大戶變動</th>
+        <th class="r">大戶持股</th><th class="r">收盤價</th>
+        <th class="r">區間漲跌</th><th>狀態</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map((r,i)=>{
+          const isNew = r.status.includes('新進');
+          const hNum = parseInt(r.hDiff.replace(/,/g,'').replace('+',''))||0;
+          const wRaw2 = parseFloat(r.wDiff)||0;
+          const wNum2 = Math.abs(wRaw2) < 1 && wRaw2 !== 0 ? wRaw2 * 100 : wRaw2;
+          const wStr = (wNum2>0?'+':'') + wNum2.toFixed(2) + '%';
+          const perfRaw = r.perf.replace('%','');
+          const perfNum = parseFloat(perfRaw);
+          const perfStr = isNaN(perfNum)?r.perf:(perfNum>0?'+':'')+perfNum.toFixed(2)+'%';
+          return `<tr onclick="window.open('${wantgoo(r.code)}','_blank')">
+            <td>${i+1}</td>
+            <td class="cd">${r.code}</td>
+            <td class="nm">${r.name}</td>
+            <td class="r ${hNum<0?'down':hNum>0?'up':''}">${r.hDiff}</td>
+            <td class="r ${wNum2>0?'up':wNum2<0?'down':''}">${wStr}</td>
+            <td class="r">${r.wPct}</td>
+            <td class="r">${r.price}</td>
+            <td class="r ${!isNaN(perfNum)&&perfNum>0?'up':!isNaN(perfNum)&&perfNum<0?'down':''}">${perfStr}</td>
+            <td><span class="tag ${isNew?'tag-new':'tag-cont'}">${isNew?'新進榜':'連續集中'}</span></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+function renderHistory() {
+  if (!HIST) { document.getElementById('hist-area').innerHTML='<div class="empty">無歷史資料</div>'; return; }
+
+  const map = {};
+  for (const row of HIST.rows||[]) {
+    const cells = row.c;
+    if (!cells) continue;
+    const date = String(gf(cells[0])||'').trim();
+    const code = String(gf(cells[1])||'').replace(/^'/,'').trim();
+    const name = String(gf(cells[2])||'').trim();
+    const wPct = parseFloat(String(gf(cells[4])||'').replace('%',''))||0;
+    if (!date||!code||date==='週別日期'||code==='代號') continue;
+    if (!map[code]) map[code]={code,name,records:[]};
+    map[code].records.push({date,wPct});
+  }
+
+  const stocks = Object.values(map)
+    .filter(s=>s.records.length>=2)
+    .sort((a,b)=>b.records.length-a.records.length)
+    .slice(0,12);
+
+  if (!stocks.length) {
+    document.getElementById('hist-area').innerHTML='<div class="empty">至少需要2週資料才能顯示歷史追蹤</div>';
+    return;
+  }
+
+  let maxPct=0;
+  stocks.forEach(s=>s.records.forEach(r=>{ if(r.wPct>maxPct) maxPct=r.wPct; }));
+
+  document.getElementById('hist-area').innerHTML = '<div class="hist-grid">' +
+    stocks.map(s=>`
+      <div class="hist-card">
+        <div class="hist-hdr" onclick="window.open('${wantgoo(s.code)}','_blank')">
+          <span class="hist-hdr-name">${s.name}</span>
+          <span class="hist-hdr-code">${s.code} · ${s.records.length}週</span>
+        </div>
+        ${s.records.slice(-6).map(r=>`
+          <div class="hist-row">
+            <span class="hist-date">${r.date}</span>
+            <div class="hist-bar-wrap"><div class="hist-bar" style="width:${maxPct>0?Math.round(r.wPct/maxPct*100):0}%"></div></div>
+            <span class="hist-pct">${r.wPct.toFixed(2)}%</span>
+          </div>`).join('')}
+      </div>`).join('') + '</div>';
+}
+
+function setSort(mode, el) {
+  SORT = mode;
+  document.querySelectorAll('#sort-hdiff,#sort-wdiff').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderWeek();
+}
+
+loadAll();
+</script>
+</body>
+</html>
