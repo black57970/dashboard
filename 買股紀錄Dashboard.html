@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>買股紀錄 Dashboard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #F4F5F7; color: #1A1A2E; }
+.topbar { background: #1A252F; color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.topbar-title { font-size: 20px; font-weight: 600; }
+.topbar-meta { font-size: 14px; color: #8CA0B0; margin-top: 2px; }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.badge { font-size: 13px; padding: 4px 12px; border-radius: 20px; background: rgba(255,255,255,0.12); color: #C8D8E8; }
+.rbtn { font-size: 14px; padding: 6px 16px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.25); background: transparent; color: #fff; cursor: pointer; }
+.rbtn:hover { background: rgba(255,255,255,0.1); }
+
+/* 分頁切換 */
+.page-tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid #E0E5EB; }
+.ptab { padding: 10px 24px; font-size: 14px; font-weight: 500; color: #667788; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+.ptab.active { color: #1A252F; border-bottom-color: #1A252F; font-weight: 600; }
+
+.wrap { max-width: 1400px; margin: 0 auto; padding: 20px 16px; }
+
+/* 統計卡片 */
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); border-left: 4px solid #E0E5EB; }
+.stat-card.green { border-left-color: #1A6B3C; }
+.stat-card.red { border-left-color: #C0392B; }
+.stat-card.blue { border-left-color: #1A3A6B; }
+.stat-card.gold { border-left-color: #B8860B; }
+.stat-label { font-size: 12px; color: #9EAAB8; margin-bottom: 8px; }
+.stat-val { font-size: 26px; font-weight: 700; color: #1A252F; }
+.stat-sub { font-size: 12px; color: #9EAAB8; margin-top: 4px; }
+.up { color: #C0392B !important; }
+.down { color: #1A6B3C !important; }
+
+/* 策略比較 */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+.card-hdr { padding: 12px 16px; background: #1A252F; color: #fff; font-size: 14px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+.card-hdr-sub { font-size: 11px; opacity: 0.7; font-weight: 400; }
+
+/* 策略卡片 */
+.strategy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 16px; }
+.strat-item { text-align: center; padding: 12px; background: #F8FAFC; border-radius: 8px; }
+.strat-label { font-size: 11px; color: #9EAAB8; margin-bottom: 4px; }
+.strat-val { font-size: 18px; font-weight: 700; }
+
+/* 月別圖表 */
+.chart-wrap { padding: 16px; overflow-x: auto; }
+.bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 160px; min-width: 600px; }
+.bar-group { display: flex; flex-direction: column; align-items: center; flex: 1; }
+.bar-val { font-size: 10px; color: #667788; margin-bottom: 3px; white-space: nowrap; }
+.bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 4px; transition: opacity 0.2s; cursor: pointer; }
+.bar:hover { opacity: 0.8; }
+.bar.pos { background: #C0392B; }
+.bar.neg { background: #1A6B3C; border-radius: 0 0 4px 4px; }
+.bar-label { font-size: 10px; color: #9EAAB8; margin-top: 4px; text-align: center; }
+
+/* 表格 */
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th { padding: 9px 14px; font-size: 12px; font-weight: 600; color: #fff; text-align: left; background: #2C4E6E; white-space: nowrap; }
+.tbl th.r { text-align: right; }
+.tbl td { padding: 8px 14px; font-size: 13px; border-bottom: 1px solid #F2F4F7; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: #F0F5FF; }
+.tbl td.r { text-align: right; }
+.tbl td.cd { font-family: monospace; font-weight: 600; color: #556677; }
+
+/* 觀察清單 */
+.watch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 12px; }
+.watch-card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+.watch-hdr { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
+.watch-name { font-size: 23px; font-weight: 600; }
+.watch-type { font-size: 19px; padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+.type-bs { background: #FEF3F2; color: #C0392B; }
+.type-td { background: #F0FFF4; color: #1A6B3C; }
+.watch-body { padding: 0 16px 16px; }
+.watch-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #F2F4F7; font-size: 20px; }
+.watch-row:last-child { border-bottom: none; }
+.watch-row-label { color: #9EAAB8; }
+.watch-row-val { font-weight: 600; color: #1A252F; }
+.price-levels { display: flex; gap: 6px; margin-top: 10px; }
+.pl { flex: 1; text-align: center; padding: 8px 4px; border-radius: 6px; font-size: 19px; }
+.pl-label { color: #9EAAB8; margin-bottom: 4px; }
+.pl-val { font-weight: 700; }
+.pl.loss { background: #FEF2F2; } .pl.loss .pl-val { color: #C0392B; }
+.pl.p3 { background: #FFF9C4; } .pl.p3 .pl-val { color: #B8860B; }
+.pl.p5 { background: #F0FFF4; } .pl.p5 .pl-val { color: #1A6B3C; }
+
+.loading { padding: 3rem; text-align: center; color: #9EAAB8; font-size: 15px; }
+.sp { display: inline-block; width: 20px; height: 20px; border: 2px solid #E0E5EB; border-top-color: #667788; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 8px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty { padding: 2rem; text-align: center; font-size: 13px; color: #9EAAB8; }
+.section-title { font-size: 15px; font-weight: 600; color: #1A252F; margin: 20px 0 10px; display: flex; align-items: center; gap: 8px; }
+.section-title::before { content:''; width:4px; height:16px; background:#1A252F; border-radius:2px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div>
+    <div class="topbar-title">買股紀錄 Dashboard</div>
+    <div class="topbar-meta">買賣超策略 · 股權分散策略</div>
+  </div>
+  <div class="topbar-right">
+    <span class="badge" id="dbadge">—</span>
+    <button class="rbtn" onclick="loadAll()">↻ 重新整理</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="page-tabs">
+    <div class="ptab active" onclick="showPage('main',this)">📊 績效總覽</div>
+    <div class="ptab" onclick="showPage('watch',this)">📋 持有清單</div>
+  </div>
+
+  <!-- 績效總覽 -->
+  <div id="page-main">
+    <div class="stats-grid">
+      <div class="stat-card blue">
+        <div class="stat-label">總投入金額</div>
+        <div class="stat-val" id="s-invest">—</div>
+        <div class="stat-sub" id="s-trades">— 筆交易</div>
+      </div>
+      <div class="stat-card" id="sc-profit">
+        <div class="stat-label">總收益</div>
+        <div class="stat-val" id="s-profit">—</div>
+        <div class="stat-sub" id="s-roi">報酬率 —%</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="stat-label">勝率</div>
+        <div class="stat-val" id="s-winrate">—</div>
+        <div class="stat-sub" id="s-windetail">— 勝 / — 敗</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">平均持有天數</div>
+        <div class="stat-val" id="s-days">—</div>
+        <div class="stat-sub">已結束交易</div>
+      </div>
+    </div>
+
+    <!-- 策略比較 -->
+    <div class="two-col">
+      <div class="card">
+        <div class="card-hdr">買賣超策略 <span class="card-hdr-sub" id="bs-count">—筆</span></div>
+        <div class="strategy-grid">
+          <div class="strat-item"><div class="strat-label">收益</div><div class="strat-val" id="bs-profit">—</div></div>
+          <div class="strat-item"><div class="strat-label">報酬率</div><div class="strat-val" id="bs-roi">—</div></div>
+          <div class="strat-item"><div class="strat-label">勝率</div><div class="strat-val" id="bs-win">—</div></div>
+          <div class="strat-item"><div class="strat-label">平均持有</div><div class="strat-val" id="bs-days">—天</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr">股權分散策略 <span class="card-hdr-sub" id="td-count">—筆</span></div>
+        <div class="strategy-grid">
+          <div class="strat-item"><div class="strat-label">收益</div><div class="strat-val" id="td-profit">—</div></div>
+          <div class="strat-item"><div class="strat-label">報酬率</div><div class="strat-val" id="td-roi">—</div></div>
+          <div class="strat-item"><div class="strat-label">勝率</div><div class="strat-val" id="td-win">—</div></div>
+          <div class="strat-item"><div class="strat-label">平均持有</div><div class="strat-val" id="td-days">—天</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 月別收益 -->
+    <div class="section-title">月別收益</div>
+    <div class="card" style="margin-bottom:20px;">
+      <div class="chart-wrap" id="month-chart"><div class="loading"><span class="sp"></span>載入中...</div></div>
+    </div>
+
+    <!-- 季別/年別 -->
+    <div class="two-col">
+      <div class="card">
+        <div class="card-hdr">季別統計</div>
+        <div id="quarter-table"><div class="loading"><span class="sp"></span></div></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr">年別統計</div>
+        <div id="year-table"><div class="loading"><span class="sp"></span></div></div>
+      </div>
+    </div>
+
+    <!-- 明細 -->
+    <div class="section-title" style="margin-top:20px;">交易明細（已結束）</div>
+    <div class="card">
+      <div id="detail-table"><div class="loading"><span class="sp"></span>載入中...</div></div>
+    </div>
+  </div>
+
+  <!-- 觀察清單 -->
+  <div id="page-watch" style="display:none;">
+    <div class="section-title">持有中 / 觀察中的股票</div>
+    <div id="watch-area"><div class="loading"><span class="sp"></span>載入中...</div></div>
+  </div>
+</div>
+
+<script>
+const SID = '1tqGiLRbhFTojjLKi5rUeRu6UwnvBT2zHDDk490A4Tjc';
+let RECORDS = [];
+
+async function gviz(sheet) {
+  const url = `https://docs.google.com/spreadsheets/d/${SID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheet)}`;
+  const res = await fetch(url);
+  const txt = await res.text();
+  const m = txt.match(/setResponse\(([\s\S]*)\)/);
+  if (!m) throw new Error('解析失敗');
+  return JSON.parse(m[1]).table;
+}
+
+function gv(cell) { return cell ? cell.v : null; }
+function parseDate(s) {
+  if (!s) return null;
+  // 處理 2026/5/8 或 2026/05/08 格式
+  const m = String(s).match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+  if (!m) return null;
+  return new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]));
+}
+function gf(cell) { return cell ? (cell.f != null ? cell.f : cell.v) : null; }
+function fmtMoney(v) {
+  const n = parseFloat(v)||0;
+  return (n>=0?'+':'')+Math.round(n).toLocaleString();
+}
+function fmtPct(v) {
+  const n = parseFloat(v)||0;
+  return (n>=0?'+':'')+n.toFixed(2)+'%';
+}
+function colorClass(v) { return parseFloat(v)>=0 ? 'up' : 'down'; }
+
+async function loadAll() {
+  RECORDS = [];
+  document.getElementById('month-chart').innerHTML = '<div class="loading"><span class="sp"></span>載入中...</div>';
+
+  try {
+    const table = await gviz('買股紀錄表');
+    const rows = table.rows || [];
+
+    for (const row of rows) {
+      const cells = row.c;
+      if (!cells || cells.length < 10) continue;
+      const type   = String(gf(cells[0])||'').trim();  // A: 類型
+      const status = String(gf(cells[1])||'').trim();  // B: 狀態
+      const buyDate= String(gf(cells[2])||'').trim();  // C: 買入日期
+      const stock  = String(gf(cells[3])||'').trim();  // D: 股票
+      const avgP   = parseFloat(gv(cells[4]))||0;      // E: 自營均價
+      const buyP   = parseFloat(gv(cells[5]))||0;      // F: 實際買入
+      const buyQ   = parseFloat(gv(cells[6]))||0;      // G: 買入張數
+      const invest = parseFloat(gv(cells[7]))||0;      // H: 投入金額
+      const sellDate=String(gf(cells[8])||'').trim();  // I: 賣出日期
+      const sellP  = parseFloat(gv(cells[9]))||0;      // J: 實際賣出
+      const sellQ  = parseFloat(gv(cells[10]))||0;     // K: 賣出張數
+      const stopL  = parseFloat(gv(cells[11]))||0;     // L: 停損
+      const tp3    = parseFloat(gv(cells[12]))||0;     // M: 停利3%
+      const tp5    = parseFloat(gv(cells[13]))||0;     // N: 停利5%
+      const profit = parseFloat(gv(cells[14]))||0;     // O: 收益
+
+      if (!stock || stock === '股票') continue;
+
+      // 計算持有天數
+      let holdDays = null;
+      if (buyDate && sellDate) {
+        const d1 = parseDate(buyDate);
+        const d2 = parseDate(sellDate);
+        if (d1 && d2) holdDays = Math.round((d2-d1)/(1000*60*60*24));
+      }
+
+      // 報酬率
+      const roi = invest > 0 ? (profit / invest * 100) : 0;
+
+      RECORDS.push({ type, status, buyDate, stock, avgP, buyP, buyQ, invest, sellP, sellDate, sellQ, stopL, tp3, tp5, profit, roi, holdDays });
+    }
+
+    document.getElementById('dbadge').textContent = new Date().toLocaleDateString('zh-TW');
+    renderMain();
+    renderWatch();
+
+  } catch(e) {
+    console.error(e);
+    document.getElementById('month-chart').innerHTML = '<div class="empty">載入失敗，請確認試算表已公開</div>';
+  }
+}
+
+function renderMain() {
+  const closed = RECORDS.filter(r => r.status === '已買入' && r.sellDate);
+  const totalInvest = closed.reduce((s,r)=>s+r.invest,0);
+  const totalProfit = closed.reduce((s,r)=>s+r.profit,0);
+  const totalRoi    = totalInvest > 0 ? totalProfit/totalInvest*100 : 0;
+  const wins        = closed.filter(r=>r.profit>0).length;
+  const losses      = closed.filter(r=>r.profit<=0).length;
+  const winRate     = closed.length > 0 ? wins/closed.length*100 : 0;
+  const avgDays     = closed.filter(r=>r.holdDays!=null).length > 0
+    ? closed.filter(r=>r.holdDays!=null).reduce((s,r)=>s+r.holdDays,0) / closed.filter(r=>r.holdDays!=null).length : 0;
+
+  document.getElementById('s-invest').textContent = '$'+Math.round(totalInvest).toLocaleString();
+  document.getElementById('s-trades').textContent = closed.length + ' 筆已結束交易';
+  document.getElementById('s-profit').textContent = fmtMoney(totalProfit);
+  document.getElementById('s-profit').className = 'stat-val ' + colorClass(totalProfit);
+  document.getElementById('s-roi').textContent = '報酬率 ' + fmtPct(totalRoi);
+  document.getElementById('sc-profit').className = 'stat-card ' + (totalProfit>=0?'green':'red');
+  document.getElementById('s-winrate').textContent = winRate.toFixed(1)+'%';
+  document.getElementById('s-windetail').textContent = wins+' 勝 / '+losses+' 敗';
+  document.getElementById('s-days').textContent = Math.round(avgDays)+' 天';
+
+  // 策略分析
+  ['買賣超','股權分散'].forEach((t,idx)=>{
+    const prefix = idx===0?'bs':'td';
+    const recs = closed.filter(r=>r.type===t);
+    const inv = recs.reduce((s,r)=>s+r.invest,0);
+    const prf = recs.reduce((s,r)=>s+r.profit,0);
+    const roi = inv>0?prf/inv*100:0;
+    const w   = recs.filter(r=>r.profit>0).length;
+    const wr  = recs.length>0?w/recs.length*100:0;
+    const ad  = recs.filter(r=>r.holdDays!=null).length>0
+      ? recs.filter(r=>r.holdDays!=null).reduce((s,r)=>s+r.holdDays,0)/recs.filter(r=>r.holdDays!=null).length : 0;
+
+    document.getElementById(prefix+'-count').textContent = recs.length+'筆';
+    const pEl = document.getElementById(prefix+'-profit');
+    pEl.textContent = '$'+Math.round(prf).toLocaleString();
+    pEl.className = 'strat-val ' + colorClass(prf);
+    const rEl = document.getElementById(prefix+'-roi');
+    rEl.textContent = fmtPct(roi);
+    rEl.className = 'strat-val ' + colorClass(roi);
+    document.getElementById(prefix+'-win').textContent = wr.toFixed(1)+'%';
+    document.getElementById(prefix+'-days').textContent = Math.round(ad)+'天';
+  });
+
+  renderMonthChart(closed);
+  renderQuarterYear(closed);
+  renderDetail(closed);
+}
+
+function renderMonthChart(closed) {
+  const allMonths = ['2026/01','2026/02','2026/03','2026/04','2026/05','2026/06',
+                     '2026/07','2026/08','2026/09','2026/10','2026/11','2026/12'];
+  const monthMap = {};
+  closed.forEach(r => {
+    if (!r.sellDate) return;
+    const d = parseDate(r.sellDate);
+    if (!d) return;
+    const key = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (!monthMap[key]) monthMap[key] = 0;
+    monthMap[key] += r.profit;
+  });
+
+  const vals = allMonths.map(m => monthMap[m] !== undefined ? monthMap[m] : null);
+  const dataVals = vals.filter(v => v !== null);
+
+  const maxVal = dataVals.length ? Math.max(...dataVals, 1) : 1;
+  const minVal = dataVals.length ? Math.min(...dataVals, -1) : -1;
+  const range = maxVal - minVal || 1;
+
+  const W = 800, H = 180, PAD = 50, TOP = 30, BOT = 30;
+  const chartW = W - PAD * 2;
+  const chartH = H - TOP - BOT;
+  const n = allMonths.length;
+  const step = chartW / (n - 1);
+  const zeroY = TOP + chartH * (1 - (0 - minVal) / range);
+
+  // 只連有資料的點
+  const dataPoints = [];
+  allMonths.forEach((m, i) => {
+    if (vals[i] !== null) {
+      dataPoints.push({
+        x: PAD + i * step,
+        y: TOP + chartH * (1 - (vals[i] - minVal) / range),
+        v: vals[i], m
+      });
+    }
+  });
+
+  const polyline = dataPoints.map(p => `${p.x},${p.y}`).join(' ');
+
+  // 所有月份的X軸標籤
+  const xLabels = allMonths.map((m, i) => {
+    const x = PAD + i * step;
+    return `<text x="${x}" y="${H-8}" text-anchor="middle" font-size="11" fill="#9EAAB8">${m.slice(5)}月</text>`;
+  }).join('');
+
+  // 垂直虛線（每個月）
+  const vLines = allMonths.map((m, i) => {
+    const x = PAD + i * step;
+    return `<line x1="${x}" y1="${TOP}" x2="${x}" y2="${H-BOT}" stroke="#F2F4F7" stroke-width="1"/>`;
+  }).join('');
+
+  // 有資料的點和標籤
+  const dots = dataPoints.map(p => `
+    <circle cx="${p.x}" cy="${p.y}" r="6" fill="${p.v>=0?'#C0392B':'#1A6B3C'}" stroke="#fff" stroke-width="2"/>
+    <text x="${p.x}" y="${p.y-12}" text-anchor="middle" font-size="10" font-weight="600" fill="${p.v>=0?'#C0392B':'#1A6B3C'}">${fmtMoney(p.v)}</text>
+  `).join('');
+
+  const svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:200px;">
+    ${vLines}
+    <line x1="${PAD}" y1="${zeroY}" x2="${W-PAD}" y2="${zeroY}" stroke="#CCCCCC" stroke-width="1" stroke-dasharray="4,3"/>
+    ${dataPoints.length > 1 ? `<polyline points="${polyline}" fill="none" stroke="#1A3A6B" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` : ''}
+    ${dots}
+    ${xLabels}
+  </svg>`;
+
+  document.getElementById('month-chart').innerHTML = `<div style="padding:16px;overflow-x:auto;">${svg}</div>`;
+}
+
+function renderQuarterYear(closed) {
+  // 季別
+  const qMap = {};
+  closed.forEach(r=>{
+    if (!r.sellDate) return;
+    const d = parseDate(r.sellDate);
+    if (!d) return;
+    const q = Math.ceil((d.getMonth()+1)/3);
+    const key = `${d.getFullYear()} Q${q}`;
+    if (!qMap[key]) qMap[key]={profit:0,invest:0};
+    qMap[key].profit += r.profit;
+    qMap[key].invest += r.invest;
+  });
+
+  const qHtml = Object.keys(qMap).sort().reverse().map(k=>{
+    const d = qMap[k];
+    const roi = d.invest>0?d.profit/d.invest*100:0;
+    return `<tr>
+      <td>${k}</td>
+      <td class="r ${colorClass(d.profit)}">${fmtMoney(d.profit)}</td>
+      <td class="r ${colorClass(roi)}">${fmtPct(roi)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('quarter-table').innerHTML = `
+    <table class="tbl">
+      <thead><tr><th>季別</th><th class="r">收益</th><th class="r">報酬率</th></tr></thead>
+      <tbody>${qHtml||'<tr><td colspan="3" class="empty">尚無資料</td></tr>'}</tbody>
+    </table>`;
+
+  // 年別
+  const yMap = {};
+  closed.forEach(r=>{
+    if (!r.sellDate) return;
+    const d = parseDate(r.sellDate);
+    if (!d) return;
+    const y = d.getFullYear();
+    if (!yMap[y]) yMap[y]={profit:0,invest:0};
+    yMap[y].profit += r.profit;
+    yMap[y].invest += r.invest;
+  });
+
+  const yHtml = Object.keys(yMap).sort().reverse().map(y=>{
+    const d = yMap[y];
+    const roi = d.invest>0?d.profit/d.invest*100:0;
+    return `<tr>
+      <td>${y}年</td>
+      <td class="r ${colorClass(d.profit)}">${fmtMoney(d.profit)}</td>
+      <td class="r ${colorClass(roi)}">${fmtPct(roi)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('year-table').innerHTML = `
+    <table class="tbl">
+      <thead><tr><th>年別</th><th class="r">收益</th><th class="r">報酬率</th></tr></thead>
+      <tbody>${yHtml||'<tr><td colspan="3" class="empty">尚無資料</td></tr>'}</tbody>
+    </table>`;
+}
+
+function renderDetail(closed) {
+  const sorted = [...closed].sort((a,b)=>parseDate(b.sellDate)-parseDate(a.sellDate));
+  const html = `
+    <table class="tbl">
+      <thead><tr>
+        <th>賣出日期</th><th>股票</th><th>類型</th>
+        <th class="r">投入</th><th class="r">收益</th><th class="r">報酬率</th><th class="r">持有天數</th>
+      </tr></thead>
+      <tbody>
+        ${sorted.map(r=>`<tr>
+          <td>${r.sellDate}</td>
+          <td class="cd">${r.stock}</td>
+          <td><span style="font-size:11px;padding:2px 6px;border-radius:10px;background:${r.type==='買賣超'?'#FEF3F2':'#F0FFF4'};color:${r.type==='買賣超'?'#C0392B':'#1A6B3C'}">${r.type}</span></td>
+          <td class="r">$${Math.round(r.invest).toLocaleString()}</td>
+          <td class="r ${colorClass(r.profit)}">${fmtMoney(r.profit)}</td>
+          <td class="r ${colorClass(r.roi)}">${fmtPct(r.roi)}</td>
+          <td class="r">${r.holdDays!=null?r.holdDays+'天':'—'}</td>
+        </tr>`).join('')||'<tr><td colspan="7" class="empty">尚無已結束的交易</td></tr>'}
+      </tbody>
+    </table>`;
+  document.getElementById('detail-table').innerHTML = html;
+}
+
+function renderWatch() {
+  const watching = RECORDS.filter(r=>r.status==='觀察');
+  const bought   = RECORDS.filter(r=>r.status==='已買入'&&!r.sellDate);
+
+  const allWatch = [...watching, ...bought];
+
+  if (!allWatch.length) {
+    document.getElementById('watch-area').innerHTML = '<div class="empty">目前沒有觀察或持有中的股票</div>';
+    return;
+  }
+
+  const html = '<div class="watch-grid">' + allWatch.map(r=>`
+    <div class="watch-card">
+      <div class="watch-hdr">
+        <div>
+          <div class="watch-name">${r.stock}</div>
+          <div style="font-size:11px;color:#9EAAB8;margin-top:2px;">${r.buyDate}</div>
+        </div>
+        <span class="watch-type ${r.type==='買賣超'?'type-bs':'type-td'}">${r.type}</span>
+      </div>
+      <div class="watch-body">
+        <div class="watch-row">
+          <span class="watch-row-label">狀態</span>
+          <span class="watch-row-val" style="color:${r.status==='觀察'?'#B8860B':'#1A6B3C'}">${r.status}</span>
+        </div>
+        <div class="watch-row">
+          <span class="watch-row-label">自營均價</span>
+          <span class="watch-row-val">${r.avgP||'—'}</span>
+        </div>
+        <div class="watch-row">
+          <span class="watch-row-label">實際買入</span>
+          <span class="watch-row-val">${r.buyP||'—'}</span>
+        </div>
+        <div class="price-levels">
+          <div class="pl loss">
+            <div class="pl-label">停損</div>
+            <div class="pl-val">${r.stopL||'—'}</div>
+          </div>
+          <div class="pl p3">
+            <div class="pl-label">停利3%</div>
+            <div class="pl-val">${r.tp3||'—'}</div>
+          </div>
+          <div class="pl p5">
+            <div class="pl-label">停利5%</div>
+            <div class="pl-val">${r.tp5||'—'}</div>
+          </div>
+        </div>
+      </div>
+    </div>`).join('') + '</div>';
+
+  document.getElementById('watch-area').innerHTML = html;
+}
+
+function showPage(page, el) {
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-main').style.display = page==='main'?'':'none';
+  document.getElementById('page-watch').style.display = page==='watch'?'':'none';
+}
+
+loadAll();
+</script>
+</body>
+</html>
